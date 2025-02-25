@@ -30,14 +30,21 @@ app.post('/todos', async (req, res) => {
     const { text } = req.body;
     if (!text) return res.status(400).json({ error: 'Todo text is required' });
 
-    const prompt = `Determine a concise category for the following todo item: "${text}"`;
-    const openaiResponse = await openai.createCompletion({
-      model: 'text-davinci-003',
-      prompt,
-      max_tokens: 10,
-      temperature: 0.5,
-    });
-    const category = openaiResponse.data.choices[0]?.text?.trim() || "Uncategorized";
+    let category = "Uncategorized";
+    
+    try {
+      const prompt = `Determine a concise category for the following todo item: "${text}"`;
+      const openaiResponse = await openai.createCompletion({
+        model: 'gpt-3.5-turbo-instruct',  // Updated to a more current model
+        prompt,
+        max_tokens: 10,
+        temperature: 0.5,
+      });
+      category = openaiResponse.data.choices[0]?.text?.trim() || "Uncategorized";
+    } catch (error) {
+      console.error("OpenAI API error:", error);
+      // Continue with default category if OpenAI fails
+    }
 
     // Create and store the new todo
     const newTodo: Todo = { id: nextId++, text, category };
