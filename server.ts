@@ -37,7 +37,7 @@ app.post('/todos', async (req, res) => {
       max_tokens: 10,
       temperature: 0.5,
     });
-    const category = openaiResponse.data.choices[0]?.text.trim() || "Uncategorized";
+    const category = openaiResponse.data.choices[0]?.text?.trim() || "Uncategorized";
 
     // Create and store the new todo
     const newTodo: Todo = { id: nextId++, text, category };
