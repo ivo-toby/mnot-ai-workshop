@@ -4,6 +4,7 @@
   "scripts": {
     "build:server": "tsc -p tsconfig.server.json",
     "build:client": "react-scripts build",
+    "build": "npm run build:server && npm run build:client",
     "start": "node build/server.js"
   },
   "dependencies": {
