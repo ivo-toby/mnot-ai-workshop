@@ -2,12 +2,13 @@
   "compilerOptions": {
     "target": "es2018",
     "module": "commonjs",
-    "outDir": "build",
-    "strict": true,
+    "moduleResolution": "node",
     "esModuleInterop": true,
+    "strict": true,
     "skipLibCheck": true,
+    "outDir": "./build",
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true
   },
-  "include": ["server.ts", "db/**/*"]
+  "include": ["db/**/*"]
 }

@@ -4,6 +4,9 @@ interface Todo {
   id: number;
   text: string;
   category: string;
+  completed: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const TodoApp: React.FC = () => {
@@ -65,6 +68,45 @@ const TodoApp: React.FC = () => {
     }
   };
 
+  const toggleTodoCompletion = async (todo: Todo) => {
+    try {
+      const response = await fetch(`/todos/${todo.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ completed: !todo.completed }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update todo');
+      }
+
+      const updatedTodo = await response.json();
+      setTodos(todos.map(t => t.id === todo.id ? updatedTodo : t));
+    } catch (err) {
+      setError('Error updating todo. Please try again.');
+      console.error(err);
+    }
+  };
+
+  const deleteTodo = async (id: number) => {
+    try {
+      const response = await fetch(`/todos/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete todo');
+      }
+
+      setTodos(todos.filter(todo => todo.id !== id));
+    } catch (err) {
+      setError('Error deleting todo. Please try again.');
+      console.error(err);
+    }
+  };
+
   return (
     <div className="todo-app">
       <header className="app-header">
@@ -97,12 +139,29 @@ const TodoApp: React.FC = () => {
       ) : (
         <ul className="todo-list">
           {todos.length === 0 ? (
-            <li className="todo-item">No todos yet. Add one above!</li>
+            <li className="todo-item empty">No todos yet. Add one above!</li>
           ) : (
             todos.map((todo) => (
-              <li key={todo.id} className="todo-item">
-                <span className="todo-text">{todo.text}</span>
-                <span className="todo-category">{todo.category}</span>
+              <li key={todo.id} className={`todo-item ${todo.completed ? 'completed' : ''}`}>
+                <div className="todo-actions">
+                  <input
+                    type="checkbox"
+                    checked={todo.completed}
+                    onChange={() => toggleTodoCompletion(todo)}
+                    className="todo-checkbox"
+                  />
+                  <button 
+                    onClick={() => deleteTodo(todo.id)}
+                    className="delete-button"
+                    aria-label="Delete todo"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="todo-content">
+                  <span className="todo-text">{todo.text}</span>
+                  <span className="todo-category">{todo.category}</span>
+                </div>
               </li>
             ))
           )}

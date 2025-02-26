@@ -3,20 +3,12 @@ import bodyParser from 'body-parser';
 import path from 'path';
 import { Configuration, OpenAIApi } from 'openai';
 import dotenv from 'dotenv';
+import { eq } from 'drizzle-orm';
+import { db, todos } from './db';
 
 dotenv.config();
 const app = express();
 app.use(bodyParser.json());
-
-// Define Todo interface and in‑memory store
-interface Todo {
-  id: number;
-  text: string;
-  category: string;
-}
-
-const todos: Todo[] = [];
-let nextId = 1;
 
 // Configure OpenAI
 const configuration = new Configuration({
@@ -35,7 +27,7 @@ app.post('/todos', async (req, res) => {
     try {
       const prompt = `Determine a concise category for the following todo item: "${text}"`;
       const openaiResponse = await openai.createCompletion({
-        model: 'gpt-3.5-turbo-instruct',  // Updated to a more current model
+        model: 'gpt-3.5-turbo-instruct',
         prompt,
         max_tokens: 10,
         temperature: 0.5,
@@ -46,11 +38,18 @@ app.post('/todos', async (req, res) => {
       // Continue with default category if OpenAI fails
     }
 
-    // Create and store the new todo
-    const newTodo: Todo = { id: nextId++, text, category };
-    todos.push(newTodo);
+    // Create and store the new todo using Drizzle ORM
+    const newTodo = await db.insert(todos)
+      .values({
+        text,
+        category,
+        completed: false,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
 
-    res.status(201).json(newTodo);
+    res.status(201).json(newTodo[0]);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Server error while creating todo' });
@@ -58,8 +57,61 @@ app.post('/todos', async (req, res) => {
 });
 
 // GET /todos: Return all stored todos
-app.get('/todos', (req, res) => {
-  res.json(todos);
+app.get('/todos', async (req, res) => {
+  try {
+    const allTodos = await db.select().from(todos).orderBy(todos.createdAt);
+    res.json(allTodos);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error while fetching todos' });
+  }
+});
+
+// PATCH /todos/:id: Update a todo
+app.patch('/todos/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { text, category, completed } = req.body;
+    
+    // Only update fields that are provided
+    const updateData: any = { updatedAt: new Date() };
+    if (text !== undefined) updateData.text = text;
+    if (category !== undefined) updateData.category = category;
+    if (completed !== undefined) updateData.completed = completed;
+    
+    const updatedTodo = await db.update(todos)
+      .set(updateData)
+      .where(eq(todos.id, id))
+      .returning();
+      
+    if (updatedTodo.length === 0) {
+      return res.status(404).json({ error: 'Todo not found' });
+    }
+    
+    res.json(updatedTodo[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error while updating todo' });
+  }
+});
+
+// DELETE /todos/:id: Delete a todo
+app.delete('/todos/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const deletedTodo = await db.delete(todos)
+      .where(eq(todos.id, id))
+      .returning();
+      
+    if (deletedTodo.length === 0) {
+      return res.status(404).json({ error: 'Todo not found' });
+    }
+    
+    res.json({ message: 'Todo deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error while deleting todo' });
+  }
 });
 
 // Serve static files for the React frontend from the build directory:
